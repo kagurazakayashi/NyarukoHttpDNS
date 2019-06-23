@@ -33,6 +33,15 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
 ["OK",[{"host":"php.net","class":"IN","ttl":377,"type":"A","ip":"185.85.0.29"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns3.easydns.org"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns1.easydns.com"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns2.easydns.net"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns4.easydns.info"},{"host":"php.net","class":"IN","ttl":377,"type":"SOA","mname":"ns1.php.net","rname":"admin.easydns.com","serial":1561190463,"refresh":16384,"retry":2048,"expire":1048576,"minimum-ttl":2560},{"host":"php.net","class":"IN","ttl":39,"type":"MX","pri":0,"target":"php-smtp3.php.net"},{"host":"php.net","class":"IN","ttl":377,"type":"TXT","txt":"v=spf1 ip4:72.52.91.12 ip6:2a02:cb41::8 ip4:140.211.15.143 ip4:208.43.231.12 ?all","entries":["v=spf1 ip4:72.52.91.12 ip6:2a02:cb41::8 ip4:140.211.15.143 ip4:208.43.231.12 ?all"]},{"host":"php.net","class":"IN","ttl":377,"type":"AAAA","ipv6":"2a02:cb40:200::1ad"}]]
 ```
 
+## 自定义 hosts
+可以创建一个文件名为 `hosts` 的文件和 php 文件放置在一起，用于自定义 ip - host 对应关系。
+- 如果客户端要查询的 host 被记录在此文件中，则直接返回此文件所记录的 ip 地址，不进行任何网络查询， `d` 参数也将被忽略。
+- 建议定义一个与查询服务器对应的 ip 地址。
+- 如果不需要此功能，请不要放置同目录下的 `hosts` 文件。
+- 如果写入过于庞大的数据且访问量较大，会影响 I/O 性能。
+- 写法和标准 host 文件一致：
+  - `ip地址` `主机名`
+
 # Python3 客户端
 ## 安装
 `pip install dnslib`

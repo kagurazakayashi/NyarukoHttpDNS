@@ -4,6 +4,7 @@ import requests
 import json
 import sys
 import getopt
+import datetime
 # pip3 install dnslib
 # pip3 install gevent
 # pip3 install requests
@@ -22,6 +23,9 @@ class DNSServer(DatagramServer):
             print(e)
         return dns
 
+    def gettime(self):
+        return "["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')+"]"
+
     def getdns(self,host):
         """从服务器查询"""
         global arga
@@ -33,11 +37,13 @@ class DNSServer(DatagramServer):
         }
         if arga["dns"] != "":
             pdata['d'] = arga["dns"]
+        # print(self.gettime()+"[上传] "+str(pdata))
         try:
             rdata = requests.post(purl, data=pdata, timeout=5)
+            # print(self.gettime()+"[下载] "+rdata.text)
             rjson = json.loads(rdata.text)
         except Exception as e:
-            print("[错误] "+host+" 解析失败: "+str(e))
+            print(self.gettime()+"[错误] "+host+" 解析失败: "+str(e))
             # print(rdata.text)
             return None
         if rjson[0] != "OK":
@@ -46,16 +52,15 @@ class DNSServer(DatagramServer):
 
     def handle(self,data,address):
         dns = self.parse(data)
-        # print("收到DNS请求 %s,query:%s" % str(address),str(dns))
         qname = str(dns.q.qname)
-        print("[请求] 收到来自 "+str(address[0])+":"+str(address[1])+" 的 DNS 请求，正在解析 "+qname+" ...")
+        print(self.gettime()+"[请求] 收到来自 "+str(address[0])+":"+str(address[1])+" 的 DNS 请求，正在解析 "+qname+" ...")
         rdnsarr = self.getdns(qname)
         if rdnsarr == None:
-            print("[错误] "+qname+" 解析失败")
+            print(self.gettime()+"[错误] "+qname+" 解析失败")
             return
         rtype = " "+rdnsarr[0]+" "
         rdns = rdnsarr[1]
-        print("[成功] "+qname+" 以"+rtype+"解析到 "+rdns)
+        print(self.gettime()+"[成功] "+qname+" 以"+rtype+"解析到 "+rdns)
         dns = dns.reply()
         dns.add_answer(*RR.fromZone(rtype.join([qname,rdns])))
         self.socket.sendto(dns.pack(),address)
@@ -90,6 +95,15 @@ def argv():
         print("参数不正确。")
         print(info)
         sys.exit(2)
+    print(info)
+    print("远程服务: "+arga["url"])
+    print("本地服务: "+arga["bind"])
+    print("IP版本: "+arga["ipv"])
+    if arga["dns"] != "":
+        print("自定义DNS: "+arga["dns"])
+    else:
+        print("自定义DNS: 禁止")
+    print("["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')+"][启动] 初始化 DNS 服务器。")
     return arga
 
 if __name__ == '__main__':

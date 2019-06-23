@@ -23,22 +23,70 @@ function ipvar($type,$argv) {
     else if ($type == "AAAA" && $ipvena[1] == 1) return true;
     return false;
 }
+function findhostsfile($host) {
+    $fileaddr = __DIR__ . DIRECTORY_SEPARATOR . 'hosts';
+    $ipv4 = null;
+    $ipv6 = null;
+    if (!file_exists($fileaddr)) return [$ipv4,$ipv6];
+    if (substr($host, -1) == ".") $host = substr($host, 0, -1);
+    $file = fopen($fileaddr, "r") or exit();
+    while(!feof($file)) {
+        $line = fgets($file);
+        $line = str_replace(["\n","\t"],['',' '],$line);
+        if (strlen($line) < 3 || strpos($line, '#') !== false) continue;
+        $linearr = array_filter(explode(" ", $line));
+        if (count($linearr) != 2) continue;
+        $nowhosts = $linearr[1];
+        if (substr($nowhosts, -1) == ".") $nowhosts = substr($nowhosts, 0, -1);
+        if ($nowhosts == $host) {
+            $nowip = $linearr[0];
+            if (filter_var($nowip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) $ipv4 = $nowip;
+            else if (filter_var($nowip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) $ipv6 = $nowip;
+            else continue;
+        }
+    }
+    fclose($file);
+    return [$ipv4,$ipv6];
+}
 $argv = count($_POST) > 0 ? $_POST : $_GET;
-if (!isset($argv["h"]) || !preg_match('/^[a-z0-9.\-_]+$/i', $argv["h"])) http403();
+if (!isset($argv["h"]) || !preg_match('/^[a-z0-9.\-\_]+$/i', $argv["h"])) http403();
 $nsresult = null;
-if (isset($argv["d"])) {
-    if (!filter_var($argv["d"], FILTER_VALIDATE_IP)) http403();
-    $dns = array($argv["d"]);
-    try {
-        @$nsresult = dns_get_record($argv["h"], DNS_ALL, $dns);
-    } catch (Exception $e) {
-        fail($e);
+$hostfile = findhostsfile($argv["h"]);
+if ($hostfile[0] || $hostfile[1]) {
+    $nsresult = array();
+    if ($hostfile[0]) {
+        array_push($nsresult,array(
+            "host" => $argv["h"],
+            "class" => "IN",
+            "ttl" => 1,
+            "type" => "A",
+            "ip" => $hostfile[0]
+        ));
+    }
+    if ($hostfile[1]) {
+        array_push($nsresult,array(
+            "host" => $argv["h"],
+            "class" => "IN",
+            "ttl" => 1,
+            "type" => "AAAA",
+            "ip" => $hostfile[1]
+        ));
     }
 } else {
-    try {
-        @$nsresult = dns_get_record($argv["h"], DNS_ALL);
-    } catch (Exception $e) {
-        fail($e);
+    if (isset($argv["d"])) {
+        if (!filter_var($argv["d"], FILTER_VALIDATE_IP)) http403();
+        $dns = array($argv["d"]);
+        try {
+            @$nsresult = dns_get_record($argv["h"], DNS_ALL, $dns);
+        } catch (Exception $e) {
+            fail($e);
+        }
+    } else {
+        try {
+            @$nsresult = dns_get_record($argv["h"], DNS_ALL);
+        } catch (Exception $e) {
+            fail($e);
+        }
     }
 }
 if (!$nsresult || count($nsresult) == 0) fail();
