@@ -24,7 +24,7 @@ function ipvar($type,$argv) {
     return false;
 }
 $argv = count($_POST) > 0 ? $_POST : $_GET;
-if (!isset($argv["h"]) || !preg_match('/^[a-z0-9.:]+$/i', $argv["h"])) http403();
+if (!isset($argv["h"]) || !preg_match('/^[a-z0-9.\-_]+$/i', $argv["h"])) http403();
 $nsresult = null;
 if (isset($argv["d"])) {
     if (!filter_var($argv["d"], FILTER_VALIDATE_IP)) http403();

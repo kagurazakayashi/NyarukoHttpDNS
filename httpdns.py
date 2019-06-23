@@ -8,7 +8,6 @@ import getopt
 # pip3 install gevent
 # pip3 install requests
 from dnslib import DNSRecord,RR,DNSLabel
-
 from gevent import socket
 from gevent.server import DatagramServer,StreamServer
 
@@ -68,13 +67,18 @@ def argv():
         'dns': '',
         'bind': '0.0.0.0:53'
     }
+    info = "NyarukoHttpDNS 版本 1.0.1\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"u:6b:d:",["url=","dns="])
+        opts, args = getopt.getopt(sys.argv[1:],"h:u:6b:d:",["url=","dns="])
     except getopt.GetoptError:
-        print("参数不正确，请查看 README.md")
+        print("参数不正确。")
+        print(info)
         sys.exit(2)
     for opt, arg in opts:
-        if opt in ("-u", "--url"):
+        if opt in ("-h", "--help", "-v", "--version"):
+            print(info)
+            sys.exit(0)
+        elif opt in ("-u", "--url"):
             arga["url"] = arg
         elif opt in ("-6", "--ipv6"):
             arga["ipv"] = "6f"
@@ -82,6 +86,10 @@ def argv():
             arga["bind"] = arg
         elif opt in ("-d", "--dns"):
             arga["dns"] = arg
+    if arga["url"] == "":
+        print("参数不正确。")
+        print(info)
+        sys.exit(2)
     return arga
 
 if __name__ == '__main__':
