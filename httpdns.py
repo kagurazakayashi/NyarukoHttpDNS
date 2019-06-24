@@ -37,9 +37,14 @@ class DNSServer(DatagramServer):
         }
         if arga["dns"] != "":
             pdata['d'] = arga["dns"]
+        if arga["timeout"] != "":
+            pdata['t'] = arga["timeout"]
         # print(self.gettime()+"[上传] "+str(pdata))
+        proxies = {}
+        if arga["proxy"] != "":
+            proxies = {'http': arga["proxy"], 'https': arga["proxy"]}
         try:
-            rdata = requests.post(purl, data=pdata, timeout=5)
+            rdata = requests.post(purl, data=pdata, timeout=arga["timeout"], proxies=proxies, verify=arga["verify"])
             # print(self.gettime()+"[下载] "+rdata.text)
             rjson = json.loads(rdata.text)
         except Exception as e:
@@ -70,11 +75,14 @@ def argv():
         'url': '',
         'ipv': '4f',
         'dns': '',
-        'bind': '0.0.0.0:53'
+        'bind': '0.0.0.0:53',
+        'proxy': '',
+        'verify': True,
+        'timeout': 5
     }
     info = "NyarukoHttpDNS 版本 1.0.1\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"h:u:6b:d:",["url=","dns="])
+        opts, args = getopt.getopt(sys.argv[1:],"h:u:6b:d:p:kt:",["url=","dns=","proxy=","timeout="])
     except getopt.GetoptError:
         print("参数不正确。")
         print(info)
@@ -91,6 +99,13 @@ def argv():
             arga["bind"] = arg
         elif opt in ("-d", "--dns"):
             arga["dns"] = arg
+        elif opt in ("-p", "--proxy"):
+            arga["proxy"] = arg
+        elif opt in ("-k", "--no-check-certificate"):
+            requests.urllib3.disable_warnings()
+            arga["verify"] = False
+        elif opt in ("-t", "--timeout"):
+            arga["timeout"] = int(arg)
     if arga["url"] == "":
         print("参数不正确。")
         print(info)
@@ -100,9 +115,15 @@ def argv():
     print("本地服务: "+arga["bind"])
     print("IP版本: "+arga["ipv"])
     if arga["dns"] != "":
-        print("自定义DNS: "+arga["dns"])
+        print("DNS服务器: "+arga["dns"])
     else:
-        print("自定义DNS: 禁止")
+        print("DNS服务器: 由服务器指定")
+    if arga["proxy"] != "":
+        print("连接方式: 通过代理服务器 "+arga["proxy"])
+    else:
+        print("连接方式: 直接连接")
+    print("SSL证书验证: "+str(arga["verify"]))
+    print("超时时间: "+str(arga["timeout"])+" 秒")
     print("["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')+"][启动] 初始化 DNS 服务器。")
     return arga
 

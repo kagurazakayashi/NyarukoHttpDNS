@@ -1,5 +1,4 @@
 <?php
-set_time_limit(5);
 function http403() {
     die(header("HTTP/1.1 403 Forbidden"));
 }
@@ -49,7 +48,8 @@ function findhostsfile($host) {
     return [$ipv4,$ipv6];
 }
 $argv = count($_POST) > 0 ? $_POST : $_GET;
-if (!isset($argv["h"]) || !preg_match('/^[a-z0-9.\-\_]+$/i', $argv["h"])) http403();
+if (!isset($argv["h"]) || !preg_match('/^[a-z0-9\.\-\_]+$/i', $argv["h"])) http403();
+if (isset($argv["t"])) set_time_limit(intval($argv["t"]));
 $nsresult = null;
 $hostfile = findhostsfile($argv["h"]);
 if ($hostfile[0] || $hostfile[1]) {
@@ -117,21 +117,22 @@ if (isset($argv["q"]) && $argv["q"] != "0") {
             }
         }
     }
-    if ($argv["q"] == "1") {
+    if ($argv["q"] > 0) {
         if (isset($argv["i"]) && $argv["i"] == "4f") {
-            $echoarr = array_merge($qarrv4,$qarrv6);
-        } else if (isset($argv["i"]) && $argv["i"] == "6f") {
             $echoarr = array_merge($qarrv6,$qarrv4);
+        } else if (isset($argv["i"]) && $argv["i"] == "6f") {
+            $echoarr = array_merge($qarrv4,$qarrv6);
         } else {
             $echoarr = $qarr;
         }
-    } else if ($argv["q"] == "2" || $argv["q"] == "3" || $argv["q"] == "4") {
-        if (isset($argv["i"]) && $argv["i"] == "4f") {
+    }
+    if ($argv["q"] == "2" || $argv["q"] == "3" || $argv["q"] == "4") {
+        if (isset($argv["i"]) && $argv["i"] == "4") {
             $echoarr = end($qarrv4) ? end($qarrv4) : array();
-        } else if (isset($argv["i"]) && $argv["i"] == "6f") {
+        } else if (isset($argv["i"]) && $argv["i"] == "6") {
             $echoarr = end($qarrv6) ? end($qarrv6) : array();
         } else {
-            $echoarr = end($qarr) ? end($qarr) : array();
+            $echoarr = end($echoarr) ? end($echoarr) : array();
         }
         if ($argv["q"] == "3") {
             $ntype = "A";

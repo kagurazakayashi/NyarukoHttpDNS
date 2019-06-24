@@ -1,6 +1,8 @@
 # NyarukoHttpDNS
 将 DNS 解析结果使用 PHP 经过 `HTTP`/`HTTPS` 传输给本地客户端。
 
+![客户端工作截图](https://github.com/kagurazakayashi/NyarukoHttpDNS/raw/master/ScreenShot-1.png)
+
 # PHP7 服务端
 ## 接收参数
 可以接收以下 `GET` 或者 `POST` 参数：
@@ -15,6 +17,7 @@
   - `2`: 返回 TTL 最高的一条 A/AAAA 记录及其详细信息。此项将会忽略 `i` 的 `f` 参数。
   - `3`: 只返回 TTL 最高的一条 A/AAAA 记录的 记录类型 和 IP 地址。此项将会忽略 `i` 的 `f` 参数。
   - `4`: 只返回 TTL 最高的一条 A/AAAA 记录的 IP 地址。此项将会忽略 `i` 的 `f` 参数。
+- `t`: 超时时间（秒）。超过指定时间则 PHP 脚本中止。
 
 ## 返回结果
 
@@ -58,7 +61,23 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
   - （可选）优先返回 IPv6 地址，否则优先返回 IPv4 地址。
 - `-d <DNS的IP地址>` 或 `--dns <DNS的IP地址>`
   - （可选）从指定 DNS 服务器进行查询，否则使用 PHP 主机的 DNS 设置。
+- `-p <代理服务器地址>` 或 `--proxy <代理服务器地址>`
+  - （可选）设置代理服务器，可以指定一个 http 代理服务器进行通信。
+- `-k` 或 `--no-check-certificate`
+  - （可选）使用 https 通信时，不要检查证书（不推荐）。
+- `-t` 或 `--timeout`
+  - （可选）超时时间（整数秒），等待指定时间后仍未收到返回结果则中止。此选项的数值会同时发送给 PHP 端的此参数。
 
 ## 使用
 - 使用 `nslookup php.net 127.0.0.1` 进行测试。
 - 若测试没问题，直接设置系统 DNS 即可。
+
+# 实践举例
+客户端启动参数：
+
+`python httpdns.py -u "https://www.xxx.org/n.php" -d 8.8.8.8 -p "http://127.0.0.1:1080" -t 15`
+
+- 将 php 复制到海外的网页服务器上，网页服务器有 SSL 证书可以使用 https ，以完成通讯内容的加密。
+- 使用 BGP 代理渠道作为中继连接到海外服务器，加速和保护海外网页服务器。客户端连接到中继代理客户端。
+- 强制指定一个信任的 DNS 服务器代替网页服务器默认的 DNS。
+- 根据网络环境，设定一个超时时间。
