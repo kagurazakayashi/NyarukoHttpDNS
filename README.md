@@ -1,4 +1,4 @@
-# NyarukoHttpDNS
+# NyarukoHttpDNS 1.1.0
 将 DNS 解析结果使用 PHP 经过 `HTTP`/`HTTPS` 传输给本地客户端。
 
 ![客户端工作截图](https://github.com/kagurazakayashi/NyarukoHttpDNS/raw/master/ScreenShot-1.png)
@@ -47,15 +47,15 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
 
 # Python3 客户端
 ## 安装
-`pip install dnslib`
-`pip install gevent`
-`pip install requests`
+`pip3 install dnslib`
+`pip3 install gevent`
+`python3 -m pip install requests`
 
 ## 接收参数
-`python ns.py -u <PHP网址> [-6] [-d <DNS地址>]`
-- `-u <PHP网址>` 或 `--url <PHP网址>` 
+`python3 ns.py -u <PHP网址> [-6] [-d <DNS地址>]`
+- `-u <PHP网址>` 或 `--url <PHP网址>`
   - 输入上面PHP文件所部署到的网址
-- `-b <IP地址:端口>` 或 `--bind <IP地址:端口>` 
+- `-b <IP地址:端口>` 或 `--bind <IP地址:端口>`
   - （可选）设置 DNS 服务器绑定的 IP地址 和 端口。默认值是 `0.0.0.0:53`。
 - `-6` 或 `--ipv6`
   - （可选）优先返回 IPv6 地址，否则优先返回 IPv4 地址。
@@ -67,6 +67,8 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
   - （可选）使用 https 通信时，不要检查证书（不推荐）。
 - `-t` 或 `--timeout`
   - （可选）超时时间（整数秒），等待指定时间后仍未收到返回结果则中止。此选项的数值会同时发送给 PHP 端的此参数。
+- `-m` 或 `--mono`
+  - （可选）以单色模式输出。提供此项则按默认颜色输出，不输出彩色提示信息。如果需要将输出记录到日志则建议提供此参数。
 
 ## 使用
 - 使用 `nslookup php.net 127.0.0.1` 进行测试。
@@ -75,9 +77,16 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
 # 实践举例
 客户端启动参数：
 
-`python httpdns.py -u "https://www.xxx.org/n.php" -d 8.8.8.8 -p "http://127.0.0.1:1080" -t 15`
+`python3 httpdns.py -u "https://www.xxx.org/n.php" -p "http://127.0.0.1:1080" -t 15 -d 8.8.8.8`
 
-- 将 php 复制到海外的网页服务器上，网页服务器有 SSL 证书可以使用 https ，以完成通讯内容的加密。
-- 使用 BGP 代理渠道作为中继连接到海外服务器，加速和保护海外网页服务器。客户端连接到中继代理客户端。
-- 强制指定一个信任的 DNS 服务器代替网页服务器默认的 DNS。
-- 根据网络环境，设定一个超时时间。
+此条命令的含义：
+- 访问的 PHP 网址是 `https://www.xxx.org/n.php`
+- 要通过代理服务器 `http://127.0.0.1:1080` 访问这个 PHP 网址
+- 要求 PHP 服务器必须在 15 秒内完成 DNS 查询
+- 要求从 DNS 服务器 `8.8.8.8` 进行查询
+
+# 附：清除 DNS 缓存命令
+
+- Windows: `ipconfig /flushdns`
+- macOS: `sudo dscacheutil -flushcache`
+- Linux: `service nscd restart`
