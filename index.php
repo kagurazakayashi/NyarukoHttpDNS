@@ -1,37 +1,41 @@
 <?php
-function http403() {
+function http403()
+{
     die(header("HTTP/1.1 403 Forbidden"));
 }
-function fail($e=null) {
+function fail($e = null)
+{
     if ($e) {
-        $errinfo = array("NG",$e->getMessage());
+        $errinfo = array("NG", $e->getMessage());
     } else {
         $errinfo = array("NG");
     }
     header('Content-Type:application/json;charset=utf-8');
     die(json_encode($errinfo));
 }
-function ipvar($type,$argv) {
-    $ipvena = [1,1];
+function ipvar($type, $argv)
+{
+    $ipvena = [1, 1];
     if (isset($argv["i"])) {
-        if ($argv["i"] == "4") $ipvena = [1,0];
-        else if ($argv["i"] == "6") $ipvena = [0,1];
-        else if ($argv["i"] == "a" || $argv["i"] == "4f" || $argv["i"] == "6f") $ipvena = [1,1];
+        if ($argv["i"] == "4") $ipvena = [1, 0];
+        else if ($argv["i"] == "6") $ipvena = [0, 1];
+        else if ($argv["i"] == "a" || $argv["i"] == "4f" || $argv["i"] == "6f") $ipvena = [1, 1];
     }
     if ($type == "A" && $ipvena[0] == 1) return true;
     else if ($type == "AAAA" && $ipvena[1] == 1) return true;
     return false;
 }
-function findhostsfile($host) {
+function findhostsfile($host)
+{
     $fileaddr = __DIR__ . DIRECTORY_SEPARATOR . 'hosts';
     $ipv4 = null;
     $ipv6 = null;
-    if (!file_exists($fileaddr)) return [$ipv4,$ipv6];
+    if (!file_exists($fileaddr)) return [$ipv4, $ipv6];
     if (substr($host, -1) == ".") $host = substr($host, 0, -1);
     $file = fopen($fileaddr, "r") or exit();
-    while(!feof($file)) {
+    while (!feof($file)) {
         $line = fgets($file);
-        $line = str_replace(["\n","\t"],['',' '],$line);
+        $line = str_replace(["\n", "\t"], ['', ' '], $line);
         if (strlen($line) < 3 || strpos($line, '#') !== false) continue;
         $linearr = array_filter(explode(" ", $line));
         if (count($linearr) != 2) continue;
@@ -45,9 +49,11 @@ function findhostsfile($host) {
         }
     }
     fclose($file);
-    return [$ipv4,$ipv6];
+    return [$ipv4, $ipv6];
 }
+
 $argv = count($_POST) > 0 ? $_POST : $_GET;
+if (isset($argv["h"]) && strcmp($argv["h"], 'linktest') == 0) exit(json_encode(["TE"]));
 if (!isset($argv["h"]) || !preg_match('/^[a-z0-9\.\-\_]+$/i', $argv["h"])) http403();
 if (isset($argv["t"])) set_time_limit(intval($argv["t"]));
 $nsresult = null;
@@ -55,7 +61,7 @@ $hostfile = findhostsfile($argv["h"]);
 if ($hostfile[0] || $hostfile[1]) {
     $nsresult = array();
     if ($hostfile[0]) {
-        array_push($nsresult,array(
+        array_push($nsresult, array(
             "host" => $argv["h"],
             "class" => "IN",
             "ttl" => 1,
@@ -64,7 +70,7 @@ if ($hostfile[0] || $hostfile[1]) {
         ));
     }
     if ($hostfile[1]) {
-        array_push($nsresult,array(
+        array_push($nsresult, array(
             "host" => $argv["h"],
             "class" => "IN",
             "ttl" => 1,
@@ -98,30 +104,30 @@ if (isset($argv["q"]) && $argv["q"] != "0") {
     $min = -1;
     $max = -1;
     foreach ($nsresult as $nowresult) {
-        if ((isset($nowresult["ip"]) || isset($nowresult["ipv6"])) && isset($nowresult["type"]) && isset($nowresult["ttl"]) && ipvar($nowresult["type"],$argv)) {
+        if ((isset($nowresult["ip"]) || isset($nowresult["ipv6"])) && isset($nowresult["type"]) && isset($nowresult["ttl"]) && ipvar($nowresult["type"], $argv)) {
             $ttl = intval($nowresult["ttl"]);
             if ($min == -1) {
                 $min = $ttl;
                 $max = $ttl;
             }
             if ($ttl <= $min) {
-                array_unshift($qarr,$nowresult);
-                if ($nowresult["type"] == "A") array_unshift($qarrv4,$nowresult);
-                else if ($nowresult["type"] == "AAAA") array_unshift($qarrv6,$nowresult);
+                array_unshift($qarr, $nowresult);
+                if ($nowresult["type"] == "A") array_unshift($qarrv4, $nowresult);
+                else if ($nowresult["type"] == "AAAA") array_unshift($qarrv6, $nowresult);
                 $min = $ttl;
             } else if ($ttl >= $max) {
-                array_push($qarr,$nowresult);
-                if ($nowresult["type"] == "A") array_push($qarrv4,$nowresult);
-                else if ($nowresult["type"] == "AAAA") array_push($qarrv6,$nowresult);
+                array_push($qarr, $nowresult);
+                if ($nowresult["type"] == "A") array_push($qarrv4, $nowresult);
+                else if ($nowresult["type"] == "AAAA") array_push($qarrv6, $nowresult);
                 $max = $ttl;
             }
         }
     }
     if ($argv["q"] > 0) {
         if (isset($argv["i"]) && $argv["i"] == "4f") {
-            $echoarr = array_merge($qarrv6,$qarrv4);
+            $echoarr = array_merge($qarrv6, $qarrv4);
         } else if (isset($argv["i"]) && $argv["i"] == "6f") {
-            $echoarr = array_merge($qarrv4,$qarrv6);
+            $echoarr = array_merge($qarrv4, $qarrv6);
         } else {
             $echoarr = $qarr;
         }
@@ -137,9 +143,9 @@ if (isset($argv["q"]) && $argv["q"] != "0") {
         if ($argv["q"] == "3") {
             $ntype = "A";
             if (isset($echoarr["ipv6"])) {
-                $echoarr = ["AAAA",$echoarr["ipv6"]];
+                $echoarr = ["AAAA", $echoarr["ipv6"]];
             } else if (isset($echoarr["ip"])) {
-                $echoarr = ["A",$echoarr["ip"]];
+                $echoarr = ["A", $echoarr["ip"]];
             } else {
                 fail();
             }
@@ -149,5 +155,4 @@ if (isset($argv["q"]) && $argv["q"] != "0") {
     $echoarr = $nsresult;
 }
 header('Content-Type:application/json;charset=utf-8');
-echo json_encode(["OK",$echoarr]);
-?>
+echo json_encode(["OK", $echoarr]);
