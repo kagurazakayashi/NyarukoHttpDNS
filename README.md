@@ -10,7 +10,7 @@
 - `d`: 指定 DNS 服务器（可选，不提供则用主机当前 DNS 设置）。
 - `i`: 需要查询的 IP 地址类型（可选）。可接受的选项：
   - `a`（默认值）, `4`, `4f`, `6`, `6f`
-  - a 为显示所有，4 为仅返回 IPv4，6 为仅返回 IPv6，带 f 则为全部显示并靠前显示此项。
+  - a 为所有，4 为仅 IPv4，6 为仅 IPv6，带 f 则为优先使用某项。
 - `q`: 精简显示级别（可选）。可接受的选项：
   - `0`: 返回所有查询结果，包括 MX、TXT 等全部类型记录。此项将会忽略 `i` 的设置，`i` 会被强制指定为 `a`。
   - `1`: 返回所有 A/AAAA 记录及其详细信息。
@@ -22,6 +22,7 @@
 ## 返回结果
 
 - 成功：返回 JSON ，内容为数组，第一位为 `OK` 。
+- 测试：返回 JSON ，内容为数组，第一位为 `TE` 。
 - 失败：返回 JSON ，内容为数组，第一位为 `NG` 。
 - 错误：返回 HTTP 403 状态码，检查提供的参数是否正确。
 
@@ -61,8 +62,12 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
   - （可选）优先返回 IPv6 地址，否则优先返回 IPv4 地址。
 - `-d <DNS的IP地址>` 或 `--dns <DNS的IP地址>`
   - （可选）从指定 DNS 服务器进行查询，否则使用 PHP 主机的 DNS 设置。
-- `-p <代理服务器地址>` 或 `--proxy <代理服务器地址>`
+- `-x <代理服务器地址>` 或 `--proxy <代理服务器地址>`
   - （可选）设置代理服务器，可以指定一个 http 代理服务器进行通信。
+- `-p <端口>` 或 `--port <端口>`
+  - （可选）设置 PHP 服务器的端口，默认自动根据 http 和 https 决定 80 或 443 。
+- `-a <User-Agent>` 或 `--ua <User-Agent>`
+  - （可选）设置 User-Agent 字符串。
 - `-k` 或 `--no-check-certificate`
   - （可选）使用 https 通信时，不要检查证书（不推荐）。
 - `-t` 或 `--timeout`
@@ -74,16 +79,21 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
 - 使用 `nslookup php.net 127.0.0.1` 进行测试。
 - 若测试没问题，直接设置系统 DNS 即可。
 
-# 实践举例
+# 命令举例
 客户端启动参数：
 
-`python3 httpdns.py -u "https://www.xxx.org/n.php" -p "http://127.0.0.1:1080" -t 15 -d 8.8.8.8`
+`python3 httpdns.py -u "http://www.xxx.org/n.php" -p 80 -x "http://127.0.0.1:1080" -t 15 -d 8.8.8.8 -k`
 
 此条命令的含义：
-- 访问的 PHP 网址是 `https://www.xxx.org/n.php`
+- 访问的 PHP 网址是 `http://www.xxx.org/n.php`
+- 访问的 PHP 服务器端口号是 `80`
 - 要通过代理服务器 `http://127.0.0.1:1080` 访问这个 PHP 网址
-- 要求 PHP 服务器必须在 15 秒内完成 DNS 查询
+- 要求 PHP 服务器必须在 `15` 秒内完成 DNS 查询
 - 要求从 DNS 服务器 `8.8.8.8` 进行查询
+- 无需检查 SSL 证书
+
+# 已知问题
+- 在 macOS 下， PHP 网址是 https 协议、并启用代理服务器时，可能会出现无法连接到代理服务器的情况（`Caused by ProxyError('Cannot connect to proxy.', timeout('timed out')`）。
 
 # 附：清除 DNS 缓存命令
 

@@ -13,7 +13,6 @@ from dnslib import DNSRecord, RR, DNSLabel
 from gevent import socket
 from gevent.server import DatagramServer, StreamServer
 
-
 class DNSServer(DatagramServer):
     """UDP-DNS服务器"""
 
@@ -44,10 +43,22 @@ class DNSServer(DatagramServer):
         # print(self.gettime()+"[上传] "+str(pdata))
         proxies = {}
         if arga["proxy"] != "":
-            proxies = {'http': arga["proxy"], 'https': arga["proxy"]}
+            proxies = {
+                'http': arga["proxy"],
+                'https': arga["proxy"]
+            }
+        ua = {}
+        if arga["ua"] != "":
+            ua = {'User-Agent': arga["ua"]}
         try:
             rdata = requests.post(
-                purl, data=pdata, timeout=arga["timeout"], proxies=proxies, verify=arga["verify"])
+                purl,
+                data=pdata,
+                timeout=arga["timeout"],
+                proxies=proxies,
+                verify=arga["verify"],
+                headers=ua
+            )
             # print(self.gettime()+"[下载] "+rdata.text)
             rjson = json.loads(rdata.text)
         except Exception as e:
@@ -55,7 +66,9 @@ class DNSServer(DatagramServer):
             printRed(self.gettime()+"[错误] "+str(e))
             # print(rdata.text)
             return None
-        if rjson[0] != "OK":
+        if rjson[0] == "TE":
+            return "OK"
+        elif rjson[0] != "OK":
             return None
         return rjson[1]
 
@@ -86,12 +99,14 @@ def argv():
         'proxy': '',
         'verify': True,
         'timeout': 5,
-        'color': True
+        'color': True,
+        'ua': 'Mozilla/5.0 (X11; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0',
+        'port': 443
     }
-    info = "NyarukoHttpDNS 版本 1.1.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
+    info = "NyarukoHttpDNS 版本 1.2.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:p:kt:", [
-                                   "url=", "dns=", "proxy=", "timeout="])
+        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kt:", [
+                                   "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
     except getopt.GetoptError:
         printRed("参数不正确。")
         print(info)
@@ -108,8 +123,12 @@ def argv():
             arga["bind"] = arg
         elif opt in ("-d", "--dns"):
             arga["dns"] = arg
-        elif opt in ("-p", "--proxy"):
+        elif opt in ("-x", "--proxy"):
             arga["proxy"] = arg
+        elif opt in ("-p", "--port"):
+            arga["port"] = int(arg)
+        elif opt in ("-a", "--ua"):
+            arga["ua"] = arg
         elif opt in ("-k", "--no-check-certificate"):
             requests.urllib3.disable_warnings()
             arga["verify"] = False
@@ -121,6 +140,9 @@ def argv():
         print("参数不正确。")
         print(info)
         sys.exit(2)
+    chmod = arga["url"].split(':')[0]
+    if chmod == 'http':
+        arga["port"] = 80
     print(info)
     print("远程服务: "+arga["url"])
     print("本地服务: "+arga["bind"])
@@ -135,6 +157,7 @@ def argv():
         print("连接方式: 直接连接")
     print("SSL证书验证: "+str(arga["verify"]))
     print("超时时间: "+str(arga["timeout"])+" 秒")
+    print("User-Agent: "+str(arga["ua"]))
     return arga
 
 
@@ -215,6 +238,9 @@ if __name__ == '__main__':
     global arga
     arga = argv()
     dnss = DNSServer(arga["bind"])
-    printGreen(
-        "["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')+"][启动] 初始化 DNS 服务器。")
-    dnss.serve_forever()
+    print(dnss.gettime()+"[启动] 正在连接到服务器...")
+    if dnss.getdns('linktest') == None:
+        printRed(dnss.gettime()+"[错误] 未能连接到服务器。")
+    else:
+        printGreen(dnss.gettime()+"[启动] 初始化 DNS 服务器。")
+        dnss.serve_forever()
