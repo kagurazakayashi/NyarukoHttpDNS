@@ -1,12 +1,16 @@
-# NyarukoHttpDNS 1.1.0
+# NyarukoHttpDNS 1.3.0
 将 DNS 解析结果使用 PHP 经过 `HTTP`/`HTTPS` 传输给本地客户端。
 
-![客户端工作截图](https://github.com/kagurazakayashi/NyarukoHttpDNS/raw/master/ScreenShot-1.png)
+- [PHP7服务端](#PHP7服务端) | [接收参数](#接收参数) | [返回结果](#返回结果)
+- [Python3客户端](#Python3客户端) | [安装](#安装) | [参数](#参数) | [使用](#使用) | [命令举例](#命令举例) | [已知问题](#已知问题)
+- [自定义hosts](#自定义hosts) | [服务端自定义hosts](#服务端自定义hosts) | [客户端自定义hosts](客户端自定义hosts) | [附](#附)
+- 客户端工作截图：
+![客户端工作截图](ScreenShot-1.png)
 
-# PHP7 服务端
+# PHP7服务端
 ## 接收参数
 可以接收以下 `GET` 或者 `POST` 参数：
-- `h`: 要查询的主机名
+- `h`: 要查询的主机名（也可以传 `linktest` 测试网络连通性）。
 - `d`: 指定 DNS 服务器（可选，不提供则用主机当前 DNS 设置）。
 - `i`: 需要查询的 IP 地址类型（可选）。可接受的选项：
   - `a`（默认值）, `4`, `4f`, `6`, `6f`
@@ -37,22 +41,13 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
 ["OK",[{"host":"php.net","class":"IN","ttl":377,"type":"A","ip":"185.85.0.29"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns3.easydns.org"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns1.easydns.com"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns2.easydns.net"},{"host":"php.net","class":"IN","ttl":377,"type":"NS","target":"dns4.easydns.info"},{"host":"php.net","class":"IN","ttl":377,"type":"SOA","mname":"ns1.php.net","rname":"admin.easydns.com","serial":1561190463,"refresh":16384,"retry":2048,"expire":1048576,"minimum-ttl":2560},{"host":"php.net","class":"IN","ttl":39,"type":"MX","pri":0,"target":"php-smtp3.php.net"},{"host":"php.net","class":"IN","ttl":377,"type":"TXT","txt":"v=spf1 ip4:72.52.91.12 ip6:2a02:cb41::8 ip4:140.211.15.143 ip4:208.43.231.12 ?all","entries":["v=spf1 ip4:72.52.91.12 ip6:2a02:cb41::8 ip4:140.211.15.143 ip4:208.43.231.12 ?all"]},{"host":"php.net","class":"IN","ttl":377,"type":"AAAA","ipv6":"2a02:cb40:200::1ad"}]]
 ```
 
-## 自定义 hosts
-可以创建一个文件名为 `hosts` 的文件和 php 文件放置在一起，用于自定义 ip - host 对应关系。
-- 如果客户端要查询的 host 被记录在此文件中，则直接返回此文件所记录的 ip 地址，不进行任何网络查询， `d` 参数也将被忽略。
-- 建议定义一个与查询服务器对应的 ip 地址。
-- 如果不需要此功能，请不要放置同目录下的 `hosts` 文件。
-- 如果写入过于庞大的数据且访问量较大，会影响 I/O 性能。
-- 写法和标准 host 文件一致：
-  - `ip地址` `主机名`
-
-# Python3 客户端
+# Python3客户端
 ## 安装
 `pip3 install dnslib`
 `pip3 install gevent`
 `python3 -m pip install requests`
 
-## 接收参数
+## 参数
 `python3 ns.py -u <PHP网址> [-6] [-d <DNS地址>]`
 - `-u <PHP网址>` 或 `--url <PHP网址>`
   - 输入上面PHP文件所部署到的网址
@@ -66,6 +61,8 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
   - （可选）设置代理服务器，可以指定一个 http 代理服务器进行通信。
 - `-p <端口>` 或 `--port <端口>`
   - （可选）设置 PHP 服务器的端口，默认自动根据 http 和 https 决定 80 或 443 。
+- `-c` 或 `--cache`
+  - （可选）在内存中缓存查询结果，已有结果不再查询服务器，直到程序退出。
 - `-a <User-Agent>` 或 `--ua <User-Agent>`
   - （可选）设置 User-Agent 字符串。
 - `-k` 或 `--no-check-certificate`
@@ -76,27 +73,45 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
   - （可选）以单色模式输出。提供此项则按默认颜色输出，不输出彩色提示信息。如果需要将输出记录到日志则建议提供此参数。
 
 ## 使用
-- 使用 `nslookup php.net 127.0.0.1` 进行测试。
-- 若测试没问题，直接设置系统 DNS 即可。
+1. 使用上述参数启动。
+2. 等待绿字提示「初始化 DNS 服务器完成」。
+3. 使用 `nslookup php.net 127.0.0.1` 进行测试。
+4. 若测试没问题，直接设置系统 DNS 即可。
+5. 使用 Ctrl+C 即可退出。
 
-# 命令举例
+## 命令举例
 客户端启动参数：
 
-`python3 httpdns.py -u "http://www.xxx.org/n.php" -p 80 -x "http://127.0.0.1:1080" -t 15 -d 8.8.8.8 -k`
+`python3 httpdns.py -u "http://www.xxx.xxx/n.php" -p 80 -x "http://127.0.0.1:1080" -t 15 -d 8.8.8.8 -k -c`
 
 此条命令的含义：
-- 访问的 PHP 网址是 `http://www.xxx.org/n.php`
+- 访问的 PHP 网址是 `http://www.xxx.xxx/n.php`
 - 访问的 PHP 服务器端口号是 `80`
 - 要通过代理服务器 `http://127.0.0.1:1080` 访问这个 PHP 网址
 - 要求 PHP 服务器必须在 `15` 秒内完成 DNS 查询
 - 要求从 DNS 服务器 `8.8.8.8` 进行查询
-- 无需检查 SSL 证书
+- 无需检查 SSL 证书（`-k`）
+- 将已经获取的结果缓存（`-c`）。下次再收到同样请求直接从缓存读取，无需再联网查询
 
-# 已知问题
+`本机 Python 脚本` <…> `本机代理` <…> `远程代理服务器` <…> `远程 PHP 服务器` <…> `目标 DNS 服务器`
+
+## 已知问题
 - 在 macOS 下， PHP 网址是 https 协议、并启用代理服务器时，可能会出现无法连接到代理服务器的情况（`Caused by ProxyError('Cannot connect to proxy.', timeout('timed out')`）。
 
-# 附：清除 DNS 缓存命令
+# 自定义hosts
+您可以创建一个文件名为 `hosts.txt` 的文件，来自定义 IP - HOST 对应关系。
+- 如果客户端要查询的 host 被记录在此文件中，则直接返回此文件所记录的 IP 地址，不进行任何查询。
+- 建议定义一个与查询服务器对应的 IP 地址条目，以免自查。
+- 如果不需要此功能，请不要放置同目录下的 `hosts.txt` 文件。
+- 写法和标准 host 文件一致：
+  - `ip地址` `主机名`
 
-- Windows: `ipconfig /flushdns`
-- macOS: `sudo dscacheutil -flushcache`
-- Linux: `service nscd restart`
+## 服务端自定义hosts
+- 创建一个文件名为 `hosts.txt` 的文件和 `.php` 文件放置在一起。
+- 如果写入过于庞大的数据、且访问量较大，会影响 I/O 性能。
+
+# 附
+- 清除DNS缓存命令
+  - Windows: `ipconfig /flushdns`
+  - macOS: `sudo dscacheutil -flushcache`
+  - Linux: `service nscd restart`

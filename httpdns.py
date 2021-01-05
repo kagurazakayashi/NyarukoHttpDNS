@@ -3,6 +3,7 @@ import string
 import requests
 import json
 import sys
+import os
 import getopt
 import datetime
 import platform
@@ -12,6 +13,7 @@ import platform
 from dnslib import DNSRecord, RR, DNSLabel
 from gevent import socket
 from gevent.server import DatagramServer, StreamServer
+
 
 class DNSServer(DatagramServer):
     """UDP-DNS服务器"""
@@ -73,17 +75,38 @@ class DNSServer(DatagramServer):
         return rjson[1]
 
     def handle(self, data, address):
+        global arga
+        global cache
+        global totali
+        totali += 1
+        print(self.gettime()+"[请求] "+str(totali)+" : "+str(address[0]) + ":"+str(address[1]))
         dns = self.parse(data)
         qname = str(dns.q.qname)
-        print(self.gettime()+"[请求] "+str(address[0]) + ":"+str(address[1]))
         print(self.gettime()+"[解析] "+qname)
-        rdnsarr = self.getdns(qname)
-        if rdnsarr == None:
-            printRed(self.gettime()+"[错误] "+qname)
-            return
-        rtype = " "+rdnsarr[0]+" "
-        rdns = rdnsarr[1]
-        printGreen(self.gettime()+"[成功] "+qname)
+        rtype = ""
+        rdns = ""
+        ca = cache.keys()
+        cal = len(cache.keys())
+        if hkl > 0 and qname in hk:
+            rtype = " A "
+            printYellow(self.gettime() +
+                        "[本地] ("+str(hkl)+") "+qname)
+        elif arga["cache"] == True and qname in ca:
+            rdnsarr = cache[qname]
+            rtype = " "+rdnsarr[0]+" "
+            rdns = rdnsarr[1]
+            printYellow(self.gettime() +
+                        "[缓存] ("+str(cal)+") "+qname)
+        else:
+            rdnsarr = self.getdns(qname)
+            if rdnsarr == None:
+                printRed(self.gettime()+"[错误] "+qname)
+                return
+            rtype = " "+rdnsarr[0]+" "
+            rdns = rdnsarr[1]
+            printGreen(self.gettime()+"[成功] "+qname)
+            if arga["cache"] == True:
+                cache[qname] = rdnsarr
         printGreen(self.gettime()+"[结果] "+rtype+" : "+rdns)
         dns = dns.reply()
         dns.add_answer(*RR.fromZone(rtype.join([qname, rdns])))
@@ -101,14 +124,15 @@ def argv():
         'timeout': 5,
         'color': True,
         'ua': 'Mozilla/5.0 (X11; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0',
-        'port': 443
+        'port': 443,
+        'cache': False
     }
-    info = "NyarukoHttpDNS 版本 1.2.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
+    info = "NyarukoHttpDNS 版本 1.3.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kt:", [
+        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:a:kct:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
     except getopt.GetoptError:
-        printRed("参数不正确。")
+        print("参数不正确。")
         print(info)
         sys.exit(2)
     for opt, arg in opts:
@@ -127,6 +151,8 @@ def argv():
             arga["proxy"] = arg
         elif opt in ("-p", "--port"):
             arga["port"] = int(arg)
+        elif opt in ("-c", "--cache"):
+            arga["cache"] = True
         elif opt in ("-a", "--ua"):
             arga["ua"] = arg
         elif opt in ("-k", "--no-check-certificate"):
@@ -157,6 +183,7 @@ def argv():
         print("连接方式: 直接连接")
     print("SSL证书验证: "+str(arga["verify"]))
     print("超时时间: "+str(arga["timeout"])+" 秒")
+    print("缓存结果: "+str(arga["cache"]))
     print("User-Agent: "+str(arga["ua"]))
     return arga
 
@@ -211,6 +238,7 @@ else:
     }
 
     def UseStyle(msg, mode='', fore='', back='40'):
+        global arga
         if arga["color"]:
             fore = '%s' % STYLE['fore'][fore] if (
                 fore in STYLE['fore']) else ''
@@ -233,14 +261,22 @@ else:
     def printBlue(msg):
         print(UseStyle(msg, fore='blue'))
 
+
 if __name__ == '__main__':
     """初始化"""
     global arga
     arga = argv()
+    global cache
+    cache = {}
+    global totali
+    totali = 0
     dnss = DNSServer(arga["bind"])
     print(dnss.gettime()+"[启动] 正在连接到服务器...")
     if dnss.getdns('linktest') == None:
         printRed(dnss.gettime()+"[错误] 未能连接到服务器。")
     else:
-        printGreen(dnss.gettime()+"[启动] 初始化 DNS 服务器。")
-        dnss.serve_forever()
+        printGreen(dnss.gettime()+"[启动] 初始化 DNS 服务器完成。")
+        try:
+            dnss.serve_forever()
+        except KeyboardInterrupt:
+            printYellow(dnss.gettime()+"[退出] 停止服务，已处理"+str(totali)+" 个请求。")

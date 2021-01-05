@@ -1,9 +1,9 @@
 <?php
-function http403()
+function http403(): void
 {
     die(header("HTTP/1.1 403 Forbidden"));
 }
-function fail($e = null)
+function fail(Exception $e = null): void
 {
     if ($e) {
         $errinfo = array("NG", $e->getMessage());
@@ -13,7 +13,7 @@ function fail($e = null)
     header('Content-Type:application/json;charset=utf-8');
     die(json_encode($errinfo));
 }
-function ipvar($type, $argv)
+function ipvar(string $type, array $argv): bool
 {
     $ipvena = [1, 1];
     if (isset($argv["i"])) {
@@ -25,9 +25,9 @@ function ipvar($type, $argv)
     else if ($type == "AAAA" && $ipvena[1] == 1) return true;
     return false;
 }
-function findhostsfile($host)
+function findhostsfile(string $host): array
 {
-    $fileaddr = __DIR__ . DIRECTORY_SEPARATOR . 'hosts';
+    $fileaddr = __DIR__ . DIRECTORY_SEPARATOR . 'hosts.txt';
     $ipv4 = null;
     $ipv6 = null;
     if (!file_exists($fileaddr)) return [$ipv4, $ipv6];
