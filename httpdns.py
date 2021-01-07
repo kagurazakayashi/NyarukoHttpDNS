@@ -77,6 +77,7 @@ class DNSServer(DatagramServer):
     def handle(self, data, address):
         global arga
         global cache
+        global hosts
         global totali
         totali += 1
         print(self.gettime()+"[请求] "+str(totali)+" : "+str(address[0]) + ":"+str(address[1]))
@@ -85,10 +86,13 @@ class DNSServer(DatagramServer):
         print(self.gettime()+"[解析] "+qname)
         rtype = ""
         rdns = ""
+        hk = hosts.keys()
+        hkl = len(hosts.keys())
         ca = cache.keys()
         cal = len(cache.keys())
         if hkl > 0 and qname in hk:
             rtype = " A "
+            rdns = hosts[qname]
             printYellow(self.gettime() +
                         "[本地] ("+str(hkl)+") "+qname)
         elif arga["cache"] == True and qname in ca:
@@ -262,15 +266,49 @@ else:
         print(UseStyle(msg, fore='blue'))
 
 
+def loadhosts():
+    nhosts = {}
+    try:
+        f = open('hosts.txt', 'r')
+        line = f.readline()
+        while line:
+            if len(line) == 0 or line[0:1] == "#":
+                line = f.readline()
+                continue
+            sparr = line.split(' ')
+            ip = sparr[0]
+            host = sparr[-1].replace('\n', '').replace('\r', '')
+            if host[-1:] != ".":
+                # host = host.strip('.')
+                host = host+"."
+            nhosts[host] = ip
+            line = f.readline()
+    except Exception as e:
+        return e
+    return nhosts
+
+
 if __name__ == '__main__':
     """初始化"""
     global arga
     arga = argv()
     global cache
     cache = {}
+    global hosts
+    hosts = {}
     global totali
     totali = 0
     dnss = DNSServer(arga["bind"])
+    if os.path.exists('hosts.txt'):
+        print(dnss.gettime()+"[启动] 正在加载自定义 hosts 文件...")
+        hostsr = loadhosts()
+        if type(hostsr) == Exception:
+            printRed(dnss.gettime()+"[错误] 未能加载 hosts 文件。")
+            printRed(dnss.gettime()+"[错误] "+str(hostsr))
+        else:
+            hosts = hostsr
+            printGreen(dnss.gettime()+"[启动] 已加载自定义 hosts 文件 " +
+                       str(len(hostsr.keys()))+" 项。")
     print(dnss.gettime()+"[启动] 正在连接到服务器...")
     if dnss.getdns('linktest') == None:
         printRed(dnss.gettime()+"[错误] 未能连接到服务器。")
