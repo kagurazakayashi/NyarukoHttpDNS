@@ -80,7 +80,8 @@ class DNSServer(DatagramServer):
         global hosts
         global totali
         totali += 1
-        print(self.gettime()+"[请求] "+str(totali)+" : "+str(address[0]) + ":"+str(address[1]))
+        print(self.gettime()+"[请求] "+str(totali) +
+              " : "+str(address[0]) + ":"+str(address[1]))
         dns = self.parse(data)
         qname = str(dns.q.qname)
         print(self.gettime()+"[解析] "+qname)
@@ -95,21 +96,31 @@ class DNSServer(DatagramServer):
             rdns = hosts[qname]
             printYellow(self.gettime() +
                         "[本地] ("+str(hkl)+") "+qname)
-        elif arga["cache"] == True and qname in ca:
+        elif arga["cache"] > 0 and qname in ca:
             rdnsarr = cache[qname]
+            if rdnsarr == None:
+                printRed(self.gettime() + "[缓存] ("+str(cal)+") None")
+                dns = dns.reply()
+                dns.add_answer(*RR.fromZone(rtype.join([])))
+                self.socket.sendto(dns.pack(), address)
+                return
             rtype = " "+rdnsarr[0]+" "
             rdns = rdnsarr[1]
-            printYellow(self.gettime() +
-                        "[缓存] ("+str(cal)+") "+qname)
+            printYellow(self.gettime() + "[缓存] ("+str(cal)+") "+qname)
         else:
             rdnsarr = self.getdns(qname)
             if rdnsarr == None:
                 printRed(self.gettime()+"[错误] "+qname)
+                if arga["cache"] > 1:
+                    cache[qname] = None
+                dns = dns.reply()
+                dns.add_answer(*RR.fromZone(rtype.join([])))
+                self.socket.sendto(dns.pack(), address)
                 return
             rtype = " "+rdnsarr[0]+" "
             rdns = rdnsarr[1]
             printGreen(self.gettime()+"[成功] "+qname)
-            if arga["cache"] == True:
+            if arga["cache"] > 0:
                 cache[qname] = rdnsarr
         printGreen(self.gettime()+"[结果] "+rtype+" : "+rdns)
         dns = dns.reply()
@@ -129,11 +140,11 @@ def argv():
         'color': True,
         'ua': 'Mozilla/5.0 (X11; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0',
         'port': 443,
-        'cache': False
+        'cache': 0
     }
     info = "NyarukoHttpDNS 版本 1.3.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:a:kct:", [
+        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kt:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
     except getopt.GetoptError:
         print("参数不正确。")
@@ -156,7 +167,7 @@ def argv():
         elif opt in ("-p", "--port"):
             arga["port"] = int(arg)
         elif opt in ("-c", "--cache"):
-            arga["cache"] = True
+            arga["cache"] = int(arg)
         elif opt in ("-a", "--ua"):
             arga["ua"] = arg
         elif opt in ("-k", "--no-check-certificate"):
@@ -187,7 +198,12 @@ def argv():
         print("连接方式: 直接连接")
     print("SSL证书验证: "+str(arga["verify"]))
     print("超时时间: "+str(arga["timeout"])+" 秒")
-    print("缓存结果: "+str(arga["cache"]))
+    if (arga["cache"] <= 0):
+        print("缓存模式: 禁止缓存")
+    elif (arga["cache"] == 1):
+        print("缓存模式: 缓存查询结果，没查到结果则不缓存")
+    elif (arga["cache"] >= 2):
+        print("缓存模式: 缓存查询结果，即使没查到结果也将无结果状态缓存")
     print("User-Agent: "+str(arga["ua"]))
     return arga
 
@@ -317,4 +333,5 @@ if __name__ == '__main__':
         try:
             dnss.serve_forever()
         except KeyboardInterrupt:
-            printYellow(dnss.gettime()+"[退出] 停止服务，已处理"+str(totali)+" 个请求。")
+            printYellow(dnss.gettime()+"[退出] 停止服务...")
+            print("已处理 "+str(totali)+" 个请求。")
