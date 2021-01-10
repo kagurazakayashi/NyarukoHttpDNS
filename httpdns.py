@@ -1,16 +1,16 @@
 #!coding=utf-8
 import string
-import requests
 import json
 import sys
 import os
 import getopt
 import datetime
 import platform
-# pip3 install dnslib
-# pip3 install gevent
 # python3 -m pip install requests
+import requests
+# pip3 install dnslib
 from dnslib import DNSRecord, RR, DNSLabel
+# pip3 install gevent
 from gevent import socket
 from gevent.server import DatagramServer, StreamServer
 
@@ -27,7 +27,7 @@ class DNSServer(DatagramServer):
         return dns
 
     def gettime(self):
-        return "["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')+"]"
+        return "["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"
 
     def getdns(self, host):
         """从服务器查询"""
@@ -67,7 +67,7 @@ class DNSServer(DatagramServer):
             printRed(self.gettime()+"[错误] "+host)
             printRed(self.gettime()+"[错误] "+str(e))
             # print(rdata.text)
-            return None
+            return e
         if rjson[0] == "TE":
             return "OK"
         elif rjson[0] != "OK":
@@ -79,39 +79,46 @@ class DNSServer(DatagramServer):
         global cache
         global hosts
         global totali
-        totali += 1
-        print(self.gettime()+"[请求] "+str(totali) +
-              " : "+str(address[0]) + ":"+str(address[1]))
+        hk = hosts.keys()
+        hkl = len(hosts.keys())
+        ca = cache.keys()
+        cal = len(cache.keys())
+        totali[3] = "I" + str(totali[0]) + "/E" + str(totali[1]) + "/A" + str(
+            totali[0]+totali[1]) + "/C" + str(totali[2]) + "/M" + str(cal) + "/F" + str(hkl)
+        print(self.gettime() + "[请求] " + totali[3] +
+              " : " + str(address[0]) + ":" + str(address[1]))
         dns = self.parse(data)
         qname = str(dns.q.qname)
         print(self.gettime()+"[解析] "+qname)
         rtype = ""
         rdns = ""
-        hk = hosts.keys()
-        hkl = len(hosts.keys())
-        ca = cache.keys()
-        cal = len(cache.keys())
         if hkl > 0 and qname in hk:
             rtype = " A "
             rdns = hosts[qname]
-            printYellow(self.gettime() +
-                        "[本地] ("+str(hkl)+") "+qname)
+            printYellow(self.gettime() + "[本地] "+qname)
+            totali[1] += 1
+            totali[2] += 1
         elif arga["cache"] > 0 and qname in ca:
             rdnsarr = cache[qname]
-            if rdnsarr == None:
-                printRed(self.gettime() + "[缓存] ("+str(cal)+") None")
+            if type(rdnsarr) != list:
+                printRed(self.gettime() + "[缓存] (NULL)")
+                totali[1] += 1
+                totali[2] += 1
                 dns = dns.reply()
                 dns.add_answer(*RR.fromZone(rtype.join([])))
                 self.socket.sendto(dns.pack(), address)
                 return
             rtype = " "+rdnsarr[0]+" "
             rdns = rdnsarr[1]
-            printYellow(self.gettime() + "[缓存] ("+str(cal)+") "+qname)
+            printYellow(self.gettime() + "[缓存] "+qname)
+            totali[0] += 1
+            totali[2] += 1
         else:
             rdnsarr = self.getdns(qname)
-            if rdnsarr == None:
+            if type(rdnsarr) != list:
                 printRed(self.gettime()+"[错误] "+qname)
-                if arga["cache"] > 1:
+                totali[1] += 1
+                if arga["cache"] > 1 and rdnsarr == None:
                     cache[qname] = None
                 dns = dns.reply()
                 dns.add_answer(*RR.fromZone(rtype.join([])))
@@ -120,6 +127,7 @@ class DNSServer(DatagramServer):
             rtype = " "+rdnsarr[0]+" "
             rdns = rdnsarr[1]
             printGreen(self.gettime()+"[成功] "+qname)
+            totali[0] += 1
             if arga["cache"] > 0:
                 cache[qname] = rdnsarr
         printGreen(self.gettime()+"[结果] "+rtype+" : "+rdns)
@@ -142,7 +150,7 @@ def argv():
         'port': 443,
         'cache': 0
     }
-    info = "NyarukoHttpDNS 版本 1.3.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
+    info = "NyarukoHttpDNS 版本 1.4.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kt:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
@@ -313,7 +321,7 @@ if __name__ == '__main__':
     global hosts
     hosts = {}
     global totali
-    totali = 0
+    totali = [0, 0, 0, "0"]  # 成功，失败，缓存，显示字符串
     dnss = DNSServer(arga["bind"])
     if os.path.exists('hosts.txt'):
         print(dnss.gettime()+"[启动] 正在加载自定义 hosts 文件...")
@@ -326,12 +334,12 @@ if __name__ == '__main__':
             printGreen(dnss.gettime()+"[启动] 已加载自定义 hosts 文件 " +
                        str(len(hostsr.keys()))+" 项。")
     print(dnss.gettime()+"[启动] 正在连接到服务器...")
-    if dnss.getdns('linktest') == None:
+    trdnsarr = dnss.getdns('linktest')
+    if type(trdnsarr) != str:
         printRed(dnss.gettime()+"[错误] 未能连接到服务器。")
     else:
         printGreen(dnss.gettime()+"[启动] 初始化 DNS 服务器完成。")
         try:
             dnss.serve_forever()
         except KeyboardInterrupt:
-            printYellow(dnss.gettime()+"[退出] 停止服务...")
-            print("已处理 "+str(totali)+" 个请求。")
+            printYellow(dnss.gettime()+"[退出] 停止服务 ( "+totali[3]+" )")
