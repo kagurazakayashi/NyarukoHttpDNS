@@ -102,3 +102,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+.vs*
+._*
+.DS_Store
+Thumbs.db
+__pycache__
