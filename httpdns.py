@@ -6,6 +6,7 @@ import os
 import getopt
 import datetime
 import platform
+import threading
 # python3 -m pip install requests
 import requests
 # pip3 install dnslib
@@ -76,15 +77,24 @@ class DNSServer(DatagramServer):
 
     def handle(self, data, address):
         global arga
+        if arga["thread"]:
+            totali[4] += 1
+            nt = threading.Thread(target=self.dnsThread, args=(data, address))
+            nt.start()
+        else:
+            self.dnsThread(data, address)
+
+    def dnsThread(self, data, address):
+        global totali
+        global arga
         global cache
         global hosts
-        global totali
         hk = hosts.keys()
         hkl = len(hosts.keys())
         ca = cache.keys()
         cal = len(cache.keys())
         totali[3] = "I" + str(totali[0]) + "/E" + str(totali[1]) + "/A" + str(
-            totali[0]+totali[1]) + "/C" + str(totali[2]) + "/M" + str(cal) + "/F" + str(hkl)
+            totali[0]+totali[1]) + "/C" + str(totali[2]) + "/M" + str(cal) + "/F" + str(hkl) + "/T" + str(len(threading.enumerate()))
         print(self.gettime() + "[请求] " + totali[3] +
               " : " + str(address[0]) + ":" + str(address[1]))
         dns = self.parse(data)
@@ -134,6 +144,7 @@ class DNSServer(DatagramServer):
         dns = dns.reply()
         dns.add_answer(*RR.fromZone(rtype.join([qname, rdns])))
         self.socket.sendto(dns.pack(), address)
+        totali[4] -= 1
 
 
 def argv():
@@ -148,11 +159,12 @@ def argv():
         'color': True,
         'ua': 'Mozilla/5.0 (X11; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0',
         'port': 443,
-        'cache': 0
+        'cache': 0,
+        'thread': True
     }
     info = "NyarukoHttpDNS 版本 1.4.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kt:", [
+        opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kmht:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
     except getopt.GetoptError:
         print("参数不正确。")
@@ -185,6 +197,8 @@ def argv():
             arga["timeout"] = int(arg)
         elif opt in ("-m", "--mono"):
             arga["color"] = False
+        elif opt in ("-h", "--no-multithreading"):
+            arga["thread"] = False
     if arga["url"] == "":
         print("参数不正确。")
         print(info)
@@ -212,6 +226,7 @@ def argv():
         print("缓存模式: 缓存查询结果，没查到结果则不缓存")
     elif (arga["cache"] >= 2):
         print("缓存模式: 缓存查询结果，即使没查到结果也将无结果状态缓存")
+    print("多线程: "+str(arga["thread"]))
     print("User-Agent: "+str(arga["ua"]))
     return arga
 
@@ -321,7 +336,7 @@ if __name__ == '__main__':
     global hosts
     hosts = {}
     global totali
-    totali = [0, 0, 0, "0"]  # 成功，失败，缓存，显示字符串
+    totali = [0, 0, 0, "0", 0]  # 0成功，1失败，2缓存，3显示字符串，4线程计数
     dnss = DNSServer(arga["bind"])
     if os.path.exists('hosts.txt'):
         print(dnss.gettime()+"[启动] 正在加载自定义 hosts 文件...")
