@@ -1,4 +1,4 @@
-# ![Icon](favicon.png) NyarukoHttpDNS 1.4.0
+# ![Icon](favicon.png) NyarukoHttpDNS 1.5.0
 - 将 DNS 解析结果使用 PHP 经过 `HTTP`/`HTTPS` 传输给本地客户端。
 - 支持双端自定义解析、通过代理连接、查询结果缓存、证书检查、IPv4/v6版本配置。
 - 可以将其设置为某个局域网的服务器来优化整个局域网的 DNS 。
@@ -57,8 +57,9 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
     - （可选）设置 DNS 服务器绑定的 IP地址 和 端口。默认值是 `0.0.0.0:53`。
 - `-6` 或 `--ipv6`
     - （可选）优先返回 IPv6 地址，否则优先返回 IPv4 地址。
-- `-d <DNS的IP地址>` 或 `--dns <DNS的IP地址>`
+- `-d <DNS的IP地址A,DNS的IP地址B>` 或 `--dns <DNS的IP地址A,DNS的IP地址B>`
     - （可选）从指定 DNS 服务器进行查询，否则使用 PHP 主机的 DNS 设置。
+    - 可以添加多个备选 DNS （使用英文逗号分隔），在查询失败或返回空白结果时逐个查询备选服务器。
 - `-x <代理服务器地址>` 或 `--proxy <代理服务器地址>`
     - （可选）设置代理服务器，可以指定一个 http 代理服务器进行通信。
 - `-p <端口>` 或 `--port <端口>`

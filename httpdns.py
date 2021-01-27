@@ -30,7 +30,7 @@ class DNSServer(DatagramServer):
     def gettime(self):
         return "["+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"
 
-    def getdns(self, host):
+    def getdns(self, host, dnsi=0):
         """从服务器查询"""
         global arga
         purl = arga["url"]
@@ -39,8 +39,8 @@ class DNSServer(DatagramServer):
             'i': arga["ipv"],
             'q': '3'
         }
-        if arga["dns"] != "":
-            pdata['d'] = arga["dns"]
+        if len(arga["dns"]) > 0:
+            pdata['d'] = arga["dns"][dnsi]
         if arga["timeout"] != "":
             pdata['t'] = arga["timeout"]
         # print(self.gettime()+"[上传] "+str(pdata))
@@ -67,11 +67,16 @@ class DNSServer(DatagramServer):
         except Exception as e:
             printRed(self.gettime()+"[错误] "+host)
             printRed(self.gettime()+"[错误] "+str(e))
-            # print(rdata.text)
-            return e
+            dnsi += 1
+            if dnsi < len(arga["dns"]):
+                return dnsi
+            return None
         if rjson[0] == "TE":
             return "OK"
         elif rjson[0] != "OK":
+            dnsi += 1
+            if dnsi < len(arga["dns"]):
+                return dnsi
             return None
         return rjson[1]
 
@@ -99,7 +104,7 @@ class DNSServer(DatagramServer):
               " : " + str(address[0]) + ":" + str(address[1]))
         dns = self.parse(data)
         qname = str(dns.q.qname)
-        print(self.gettime()+"[解析] "+qname)
+        print(self.gettime()+"[解析] "+qname+" -> "+arga["dns"][0])
         rtype = ""
         rdns = ""
         if hkl > 0 and qname in hk:
@@ -124,22 +129,29 @@ class DNSServer(DatagramServer):
             totali[0] += 1
             totali[2] += 1
         else:
-            rdnsarr = self.getdns(qname)
-            if type(rdnsarr) != list:
-                printRed(self.gettime()+"[错误] "+qname)
-                totali[1] += 1
-                if arga["cache"] > 1 and rdnsarr == None:
-                    cache[qname] = None
-                dns = dns.reply()
-                dns.add_answer(*RR.fromZone(rtype.join([])))
-                self.socket.sendto(dns.pack(), address)
-                return
-            rtype = " "+rdnsarr[0]+" "
-            rdns = rdnsarr[1]
-            printGreen(self.gettime()+"[成功] "+qname)
-            totali[0] += 1
-            if arga["cache"] > 0:
-                cache[qname] = rdnsarr
+            dnsi = 0
+            while dnsi >= 0:
+                rdnsarr = self.getdns(qname, dnsi)
+                if type(rdnsarr) != list:
+                    printRed(self.gettime()+"[错误] "+qname)
+                    totali[1] += 1
+                    if type(rdnsarr) == int:
+                        dnsi = rdnsarr
+                        printYellow(self.gettime() + "[备选] "+qname+" -> "+arga["dns"][dnsi])
+                        continue
+                    if rdnsarr == None and arga["cache"] > 1:
+                        cache[qname] = None
+                    dns = dns.reply()
+                    dns.add_answer(*RR.fromZone(rtype.join([])))
+                    self.socket.sendto(dns.pack(), address)
+                    return
+                rtype = " "+rdnsarr[0]+" "
+                rdns = rdnsarr[1]
+                printGreen(self.gettime()+"[成功] "+qname)
+                totali[0] += 1
+                if arga["cache"] > 0:
+                    cache[qname] = rdnsarr
+                break
         printGreen(self.gettime()+"[结果] "+rtype+" : "+rdns)
         dns = dns.reply()
         dns.add_answer(*RR.fromZone(rtype.join([qname, rdns])))
@@ -162,7 +174,7 @@ def argv():
         'cache': 0,
         'thread': True
     }
-    info = "NyarukoHttpDNS 版本 1.4.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
+    info = "NyarukoHttpDNS 版本 1.5.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kmht:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
@@ -210,9 +222,12 @@ def argv():
     print("远程服务: "+arga["url"])
     print("本地服务: "+arga["bind"])
     print("IP版本: "+arga["ipv"])
+
     if arga["dns"] != "":
         print("DNS服务器: "+arga["dns"])
+        arga["dns"] = arga["dns"].split(',')
     else:
+        arga["dns"] = []
         print("DNS服务器: 由服务器指定")
     if arga["proxy"] != "":
         print("连接方式: 通过代理服务器 "+arga["proxy"])
