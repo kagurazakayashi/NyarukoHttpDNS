@@ -7,6 +7,7 @@ import getopt
 import datetime
 import platform
 import threading
+import socket
 # python3 -m pip install requests
 import requests
 # pip3 install dnslib
@@ -101,7 +102,7 @@ class DNSServer(DatagramServer):
         totali[3] = "I" + str(totali[0]) + "/E" + str(totali[1]) + "/A" + str(
             totali[0]+totali[1]) + "/C" + str(totali[2]) + "/M" + str(cal) + "/F" + str(hkl) + "/T" + str(len(threading.enumerate()))
         print(self.gettime() + "[请求] " + totali[3] +
-              " : " + str(address[0]) + ":" + str(address[1]))
+              " | " + str(address[0]) + ":" + str(address[1]))
         dns = self.parse(data)
         qname = str(dns.q.qname)
         print(self.gettime()+"[解析] "+qname+" -> "+arga["dns"][0])
@@ -110,13 +111,13 @@ class DNSServer(DatagramServer):
         if hkl > 0 and qname in hk:
             rtype = " A "
             rdns = hosts[qname]
-            printYellow(self.gettime() + "[本地] "+qname)
+            printYellow(self.gettime() + "[本地] "+qname+" -> FILE")
             totali[1] += 1
             totali[2] += 1
         elif arga["cache"] > 0 and qname in ca:
             rdnsarr = cache[qname]
             if type(rdnsarr) != list:
-                printRed(self.gettime() + "[缓存] (NULL)")
+                printRed(self.gettime() + "[缓存] (NULL) -> CACHE")
                 totali[1] += 1
                 totali[2] += 1
                 dns = dns.reply()
@@ -125,19 +126,21 @@ class DNSServer(DatagramServer):
                 return
             rtype = " "+rdnsarr[0]+" "
             rdns = rdnsarr[1]
-            printYellow(self.gettime() + "[缓存] "+qname)
+            printYellow(self.gettime() + "[缓存] "+qname+" -> CACHE")
             totali[0] += 1
             totali[2] += 1
         else:
             dnsi = 0
             while dnsi >= 0:
                 rdnsarr = self.getdns(qname, dnsi)
+                toStr = qname+" -> "+arga["dns"][dnsi]
                 if type(rdnsarr) != list:
-                    printRed(self.gettime()+"[错误] "+qname)
+                    printRed(self.gettime()+"[错误] "+toStr)
                     totali[1] += 1
                     if type(rdnsarr) == int:
                         dnsi = rdnsarr
-                        printYellow(self.gettime() + "[备选] "+qname+" -> "+arga["dns"][dnsi])
+                        toStr = qname+" -> "+arga["dns"][dnsi]
+                        printYellow(self.gettime() + "[备选] "+toStr)
                         continue
                     if rdnsarr == None and arga["cache"] > 1:
                         cache[qname] = None
@@ -147,7 +150,7 @@ class DNSServer(DatagramServer):
                     return
                 rtype = " "+rdnsarr[0]+" "
                 rdns = rdnsarr[1]
-                printGreen(self.gettime()+"[成功] "+qname)
+                printGreen(self.gettime()+"[成功] "+toStr)
                 totali[0] += 1
                 if arga["cache"] > 0:
                     cache[qname] = rdnsarr
@@ -174,7 +177,7 @@ def argv():
         'cache': 0,
         'thread': True
     }
-    info = "NyarukoHttpDNS 版本 1.5.0\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
+    info = "NyarukoHttpDNS 版本 1.5.2\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kmht:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
@@ -341,6 +344,55 @@ def loadhosts():
         return e
     return nhosts
 
+def ipv4DnsUrl(ipv4,zeroEnd = False):
+    ipv4arr = ipv4.split('.')
+    if zeroEnd == True:
+        ipv4arr[3] = '0'
+    ipv4arr = list(reversed(ipv4arr))
+    return '.'.join(ipv4arr)
+
+def ipv6DnsUrl(ipv6,zeroEnd = False):
+    ipv6 = ipv6.split(':')
+    addZeroUnit = 8 - len(ipv6)
+    nipv6 = []
+    for ipUnit in ipv6:
+        ipUnitLen = len(ipUnit)
+        if ipUnitLen == 0:
+            for _ in range(addZeroUnit + 1):
+                nipv6.append('0000')
+            continue
+        addZero = 4 - ipUnitLen
+        nipv6.append(('0' * addZero) + ipUnit)
+    if zeroEnd == True:
+        nipv6[7] = '0'
+    else:
+        nipv6[7] = str(int(nipv6[7]))
+    ipv6str = ''.join(nipv6)
+    ipv6str = '.'.join(reversed(ipv6str))
+    return ipv6str
+
+def addinaddr():
+    global cache
+    hostname = socket.gethostname()
+    ip = socket.gethostbyname(hostname)
+    ipStr = ''
+    # ipStr0 = ''
+    if ip.find(":") == -1:
+        ipStr = ipv4DnsUrl(ip)
+        ipStr0 = ipv4DnsUrl(ip, True)
+    else:
+        ipStr = ipv4DnsUrl(ip)
+        ipStr0 = ipv4DnsUrl(ip, True)
+    uStert = ['b','db','r','dr','lb']
+    for uStertN in uStert:
+        key = uStertN + '._dns-sd._udp.' + ipStr + '.in-addr.arpa.'
+        print(dnss.gettime()+"[缓存] " + ip + " " + key)
+        cache[key] = ip
+        key = uStertN + '._dns-sd._udp.' + ipStr0 + '.in-addr.arpa.'
+        print(dnss.gettime()+"[缓存] (null) " + key)
+        cache[key] = None
+    print(dnss.gettime()+"[缓存] " + ip + " " + hostname)
+    cache[hostname] = ip
 
 if __name__ == '__main__':
     """初始化"""
@@ -368,6 +420,8 @@ if __name__ == '__main__':
     if type(trdnsarr) != str:
         printRed(dnss.gettime()+"[错误] 未能连接到服务器。")
     else:
+        printGreen(dnss.gettime()+"[启动] 连接成功，创建预置缓存内容...")
+        addinaddr()
         printGreen(dnss.gettime()+"[启动] 初始化 DNS 服务器完成。")
         try:
             dnss.serve_forever()

@@ -108,3 +108,5 @@ venv.bak/
 .DS_Store
 Thumbs.db
 __pycache__
+
+test.py

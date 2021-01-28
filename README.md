@@ -1,4 +1,4 @@
-# ![Icon](favicon.png) NyarukoHttpDNS 1.5.0
+# ![Icon](favicon.png) NyarukoHttpDNS 1.5.2
 - 将 DNS 解析结果使用 PHP 经过 `HTTP`/`HTTPS` 传输给本地客户端。
 - 支持双端自定义解析、通过代理连接、查询结果缓存、证书检查、IPv4/v6版本配置。
 - 可以将其设置为某个局域网的服务器来优化整个局域网的 DNS 。
