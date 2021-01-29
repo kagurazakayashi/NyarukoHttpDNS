@@ -3,3 +3,4 @@
 127.0.0.1 localhost
 255.255.255.255 broadcasthost
 127.0.0.1 in-addr.arpa
+127.0.0.1 *._dns-sd._udp.<ipurl>.in-addr.arpa
