@@ -32,7 +32,7 @@ function findhostsfile(string $host): array
     $ipv6 = null;
     if (!file_exists($fileaddr)) return [$ipv4, $ipv6];
     if (substr($host, -1) == ".") $host = substr($host, 0, -1);
-    $file = fopen($fileaddr, "r") or exit();
+    $file = fopen($fileaddr, "r") or die(json_encode(array("NG", "HOSTS ERROR")));
     while (!feof($file)) {
         $line = fgets($file);
         $line = str_replace(["\n", "\t"], ['', ' '], $line);

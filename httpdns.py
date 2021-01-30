@@ -111,21 +111,27 @@ class DNSServer(DatagramServer):
         isLocFile = ""
         if hkl > 0:
             for nhk in hk:
-                if fnmatch(qname, nhk) == True:
+                if qname == nhk or fnmatch(qname, nhk):
                     isLocFile = nhk
                     break
         if len(isLocFile) > 0:
             rtype = " A "
             rdns = hosts[isLocFile]
-            print(self.gettime()+"[解析] "+qname+" -> FILE")
-            printYellow(self.gettime() + "[本地] "+isLocFile+" -> FILE")
+            if type(rdns) != str:
+                printRed(self.gettime() + "[本地] "+isLocFile+" (NULL) <- FILE")
+                totali[1] += 1
+                totali[2] += 1
+                dns = dns.reply()
+                dns.add_answer(*RR.fromZone(rtype.join([])))
+                self.socket.sendto(dns.pack(), address)
+                return
+            printYellow(self.gettime() + "[本地] "+isLocFile+" <- FILE")
             totali[1] += 1
             totali[2] += 1
         elif arga["cache"] > 0 and qname in ca:
-            print(self.gettime()+"[解析] "+qname+" -> CACHE")
             rdnsarr = cache[qname]
             if type(rdnsarr) != list:
-                printRed(self.gettime() + "[缓存] (NULL) -> CACHE")
+                printRed(self.gettime() + "[缓存] "+qname+" (NULL) <- CACHE")
                 totali[1] += 1
                 totali[2] += 1
                 dns = dns.reply()
@@ -134,7 +140,7 @@ class DNSServer(DatagramServer):
                 return
             rtype = " "+rdnsarr[0]+" "
             rdns = rdnsarr[1]
-            printYellow(self.gettime() + "[缓存] "+qname+" -> CACHE")
+            printYellow(self.gettime() + "[缓存] "+qname+" <- CACHE")
             totali[0] += 1
             totali[2] += 1
         else:
@@ -142,7 +148,7 @@ class DNSServer(DatagramServer):
             dnsi = 0
             while dnsi >= 0:
                 rdnsarr = self.getdns(qname, dnsi)
-                toStr = qname+" -> "+arga["dns"][dnsi]
+                toStr = qname+" <- "+arga["dns"][dnsi]
                 if type(rdnsarr) != list:
                     printRed(self.gettime()+"[错误] "+toStr)
                     totali[1] += 1
@@ -357,14 +363,16 @@ def loadhosts():
             sparr = line.split(' ')
             fip = sparr[0]
             host = sparr[-1].replace('\n', '').replace('\r', '')
-            host = host.replace("<ipurl>", ipStr)
-            host = host.replace("<ipurl0>", ipStr0)
-            host = host.replace("<ip>", ip)
-            host = host.replace("<host>", hostname)
+            host = host.replace("<ipurl>", ipStr).replace("<ipurl0>", ipStr0)
+            host = host.replace("<ip>", ip).replace("<host>", hostname)
+            fip = fip.replace("<ip>", ip)
             if host[-1:] != ".":
                 host = host + "."
             print(dnss.gettime()+"[文件] "+host+" -> "+fip)
-            nhosts[host] = fip
+            if fip == "<null>":
+                nhosts[host] = None
+            else:
+                nhosts[host] = fip
             line = f.readline()
     except Exception as e:
         return e

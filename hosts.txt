@@ -2,5 +2,7 @@
 127.0.0.1 local
 127.0.0.1 localhost
 255.255.255.255 broadcasthost
-127.0.0.1 in-addr.arpa
-127.0.0.1 *._dns-sd._udp.<ipurl>.in-addr.arpa
+<ip> <host>
+<ip> in-addr.arpa
+<null> *._dns-sd._udp.<ipurl0>.in-addr.arpa
+<ip> *._dns-sd._udp.<ipurl>.in-addr.arpa
