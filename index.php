@@ -1,4 +1,5 @@
 <?php
+// NyarukoHttpDNS Server 1.5.5
 function http403(): void
 {
     die(header("HTTP/1.1 403 Forbidden"));
@@ -36,7 +37,12 @@ function findhostsfile(string $host): array
     while (!feof($file)) {
         $line = fgets($file);
         $line = str_replace(["\n", "\t"], ['', ' '], $line);
-        if (strlen($line) < 3 || strpos($line, '#') !== false) continue;
+        if (strlen($line) < 3) continue;
+        $oneChar = substr($line, 0, 1);
+        if (strcmp($oneChar, "#") == 0) continue;
+        if (strpos($line, "#") !== false) {
+            $line = explode("#", $line)[0];
+        }
         $linearr = array_filter(explode(" ", $line));
         if (count($linearr) != 2) continue;
         $nowhosts = $linearr[1];

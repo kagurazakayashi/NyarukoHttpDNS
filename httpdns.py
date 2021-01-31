@@ -1,4 +1,5 @@
 #!coding=utf-8
+# 服务端版本要求 == 1.5.5
 import string
 import json
 import sys
@@ -8,6 +9,7 @@ import datetime
 import platform
 import threading
 import socket
+import time
 # python3 -m pip install requests
 import requests
 # pip3 install dnslib
@@ -192,7 +194,7 @@ def argv():
         'cache': 0,
         'thread': True
     }
-    info = "NyarukoHttpDNS 版本 1.5.3\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
+    info = "NyarukoHttpDNS 版本 1.5.5\nhttps://github.com/kagurazakayashi/NyarukoHttpDNS\n有关命令行的帮助信息，请查看 README.md 。"
     try:
         opts, args = getopt.getopt(sys.argv[1:], "h:u:6b:d:x:p:c:a:kmht:", [
                                    "url=", "dns=", "proxy=", "port=", "ua=", "timeout="])
@@ -360,15 +362,15 @@ def loadhosts():
             if len(line) == 0 or line[0:1] == "#":
                 line = f.readline()
                 continue
-            sparr = line.split(' ')
+            sparr = line.split("#")[0].split(' ')
             fip = sparr[0]
-            host = sparr[-1].replace('\n', '').replace('\r', '')
+            host = sparr[1].replace('\n', '').replace('\r', '')
             host = host.replace("<ipurl>", ipStr).replace("<ipurl0>", ipStr0)
             host = host.replace("<ip>", ip).replace("<host>", hostname)
             fip = fip.replace("<ip>", ip)
             if host[-1:] != ".":
                 host = host + "."
-            print(dnss.gettime()+"[文件] "+host+" -> "+fip)
+            # print(dnss.gettime()+"[文件] "+host+" -> "+fip)
             if fip == "<null>":
                 nhosts[host] = None
             else:
@@ -437,5 +439,9 @@ if __name__ == '__main__':
         printGreen(dnss.gettime()+"[启动] 初始化 DNS 服务器完成。")
         try:
             dnss.serve_forever()
-        except KeyboardInterrupt:
-            printYellow(dnss.gettime()+"[退出] 停止服务 ( "+totali[3]+" )")
+        except BaseException as e:
+            if isinstance(e, KeyboardInterrupt):
+                printYellow(dnss.gettime()+"[退出] 停止 ( "+totali[3]+" )")
+                quit()
+            else:
+                printRed(dnss.gettime()+"[错误] "+str(e))

@@ -1,4 +1,4 @@
-# ![Icon](favicon.png) NyarukoHttpDNS 1.5.3
+# ![Icon](favicon.png) NyarukoHttpDNS 1.5.5
 - 将 DNS 解析结果使用 PHP 经过 `HTTP`/`HTTPS` 传输给本地客户端。
 - 支持双端自定义解析、通过代理连接、查询结果缓存、证书检查、IPv4/v6版本配置。
 - 可以将其设置为某个局域网的服务器来优化整个局域网的 DNS 。
@@ -128,7 +128,6 @@ $ curl "http://127.0.0.1/NyarukoHttpDNS/?h=php.net&d=8.8.8.8&i=a&q=0"
     - 例如： `127.0.0.1 localhost`
 - 注意：不支持的 hosts 文件写法：
     - 不支持一个域名对应多个 IP 地址的写法（包括一个 v4 和一个 v6 的写法）
-    - 不支持 `#` 字符不在行首位的注释写法
 
 ## 服务端自定义hosts
 - 创建一个文件名为 `hosts.txt` 的文件和 `.php` 文件放置在一起。
